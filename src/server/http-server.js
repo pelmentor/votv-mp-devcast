@@ -41,9 +41,13 @@ async function serveStatic(req, res) {
   let urlPath = decodeURIComponent(req.url.split('?')[0]);
   if (urlPath === '/' || urlPath === '') urlPath = '/index.html';
 
-  // Resolve safely within PUBLIC_DIR
+  // Resolve safely within PUBLIC_DIR.
+  // The trailing separator on the boundary check prevents a sibling directory
+  // whose name happens to start with the same prefix (e.g. PUBLIC_DIR + '_evil')
+  // from passing a naive startsWith.
   const fsPath = path.normalize(path.join(PUBLIC_DIR, urlPath));
-  if (!fsPath.startsWith(PUBLIC_DIR)) {
+  const boundary = PUBLIC_DIR.endsWith(path.sep) ? PUBLIC_DIR : PUBLIC_DIR + path.sep;
+  if (!fsPath.startsWith(boundary) && fsPath !== PUBLIC_DIR) {
     res.writeHead(403, noStoreHeaders()); res.end('Forbidden'); return;
   }
 
@@ -94,6 +98,20 @@ server.on('clientError', (err, socket) => {
 process.on('unhandledRejection', (err) => {
   console.error('[devcast] unhandledRejection:', err);
 });
+
+// Graceful shutdown so Ctrl+C from the launching .bat actually frees port 7842.
+// Without this, the npm/node wrapper can leave the listener orphaned for ~minute
+// timeouts and the next start.bat hits EADDRINUSE.
+let shuttingDown = false;
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[devcast] ${signal} received, shutting down`);
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(1), 3000).unref();
+}
+process.on('SIGINT',  () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 server.listen(PORT, () => {
   console.log(`[devcast] listening http://localhost:${PORT}/`);

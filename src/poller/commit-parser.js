@@ -88,15 +88,16 @@ export function enrichCommit(commit) {
   return commit;
 }
 
-// Forward-fill phase across an array of commits (oldest -> newest order in chronological time;
-// the input array is newest-first as `git log` returns). We walk newest -> oldest and
-// REMEMBER the last non-null phase, then assign it to entries that came AFTER it chronologically
-// (which means BEFORE it in array index for the newest-first array).
-// Simpler: walk oldest -> newest and forward-fill; reverse twice.
+// Forward-fill phase across commits IN PLACE.
+// Input is `git log` order (newest-first); we walk oldest -> newest and copy the
+// most recent declared phase forward into any later commit that didn't declare one.
+// Mutates commit objects directly; returns nothing — the caller already has the
+// reference. (Earlier API both mutated and returned a re-allocated array, which
+// was confusing.)
 export function propagatePhases(commitsNewestFirst) {
-  const reversed = commitsNewestFirst.slice().reverse(); // now oldest -> newest
+  const oldestFirst = commitsNewestFirst.slice().reverse();
   let active = null;
-  for (const c of reversed) {
+  for (const c of oldestFirst) {
     if (c.phase) active = { full: c.phase, raw: c.phaseRaw, family: c.phaseFamily };
     else if (active) {
       c.phase = active.full;
@@ -104,5 +105,4 @@ export function propagatePhases(commitsNewestFirst) {
       c.phaseFamily = active.family;
     }
   }
-  return reversed.reverse();
 }

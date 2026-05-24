@@ -24,10 +24,17 @@ function run(args, { cwd, timeoutMs = 10000 } = {}) {
   });
 }
 
-// HEAD SHA (40-char) + branch name in one fast call.
+// HEAD SHA + branch name in ONE atomic git invocation.
+// `git log -1 --format='%H<NUL>%D' HEAD` returns: <sha>\0<ref-decoration>
+// On attached HEAD, %D contains "HEAD -> <branch>" plus optional remote/tag entries.
+// On detached HEAD, %D contains "HEAD" alone (or refs that aren't branches).
+// Atomic single call eliminates the TOCTOU window of separate symbolic-ref + rev-parse.
 export async function readHead(cwd) {
-  const branch = (await run(['symbolic-ref', '--short', 'HEAD'], { cwd })).trim();
-  const sha    = (await run(['rev-parse', 'HEAD'],                { cwd })).trim();
+  const out = (await run(['log', '-1', '--format=%H%x00%D', 'HEAD'], { cwd })).trim();
+  const [sha, decoration = ''] = out.split('\0');
+  let branch = 'HEAD'; // detached fallback
+  const m = /HEAD -> ([^,\n]+)/.exec(decoration);
+  if (m) branch = m[1].trim();
   return { branch, sha, shortSha: sha.slice(0, 7) };
 }
 
@@ -83,17 +90,4 @@ export async function readStatus(cwd) {
     entries.push({ x, y, path: filePath, renamedFrom });
   }
   return entries;
-}
-
-// Numstat for a commit (added/removed per file) — used for commit feed totals.
-export async function readNumstat(cwd, sha) {
-  const stdout = await run(['show', '--numstat', '--format=', '--no-color', sha], { cwd });
-  return stdout.trim().split('\n').filter(Boolean).map(line => {
-    const [addStr, delStr, file] = line.split('\t');
-    return {
-      path: file,
-      linesAdded: addStr === '-' ? 0 : Number(addStr),
-      linesRemoved: delStr === '-' ? 0 : Number(delStr),
-    };
-  });
 }

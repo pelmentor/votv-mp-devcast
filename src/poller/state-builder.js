@@ -9,19 +9,6 @@ const SCHEMA_VERSION = 1;
 // Heatmap window: 7 days * 24 hours, populated sparsely.
 const HEATMAP_DAYS = 7;
 
-function buildFileTreeEntries(numstat, statusEntries) {
-  // Map path -> {linesAdded, linesRemoved, status}
-  // numstat covers committed-diff paths; statusEntries covers working-tree paths.
-  // For HEAD commit, status comes from the diff itself (we don't have it here cheaply),
-  // so use 'M' by default unless numstat hints a deletion (added=0 && removed>0 isn't conclusive).
-  // The actual A/M/D status is in diff.files[].status — buildFileTree() prefers that source.
-  const map = new Map();
-  for (const ns of numstat) {
-    map.set(ns.path, { path: ns.path, status: 'M', linesAdded: ns.linesAdded, linesRemoved: ns.linesRemoved });
-  }
-  return Array.from(map.values()).sort((a, b) => a.path.localeCompare(b.path));
-}
-
 function buildFileTreeFromDiff(diff) {
   return diff.files
     .map(f => ({

@@ -103,6 +103,24 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  position: relative;
+}
+/* Flash indicator: opacity transition on a pseudo-element border.
+   Animating opacity is compositor-only (no repaint of panel contents),
+   unlike `box-shadow: inset` which forces full panel repaint per frame. */
+.panel::after {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  border: 3px solid var(--accent);
+  opacity: 0;
+  will-change: opacity;
+}
+.panel.flash::after { animation: flash-border 600ms ease-out 1; }
+@keyframes flash-border {
+  0%   { opacity: 0; }
+  18%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 .panel--header { grid-area: header; }
 .panel--feed   { grid-area: feed;   }
@@ -271,9 +289,9 @@ body {
   border-top: 1px solid var(--border);
 }
 
-.panel--wt .panel-title { color: #ffd33d; }
+.panel--wt .panel-title { color: var(--fg-muted); }
 .panel--wt .panel-title.is-dirty { color: var(--type-audit); }
-.panel--wt.is-dirty { box-shadow: inset 0 0 0 1px var(--type-audit); }
+.panel--wt.is-dirty { outline: 1px solid var(--type-audit); outline-offset: -1px; }
 
 /* ----- File tree ----- */
 .tree__entry {
@@ -307,7 +325,7 @@ body {
 .heat__day-labels { display: grid; grid-template-rows: repeat(7, 1fr); font-family: var(--font-mono); font-size: 11px; color: var(--fg-faint); align-items: center; }
 .heat__rows { display: grid; grid-template-rows: repeat(7, 1fr); gap: 2px; }
 .heat__row { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; }
-.heat__cell { background: var(--heat-0); border-radius: 2px; transition: background 200ms ease; }
+.heat__cell { background: var(--heat-0); border-radius: 2px; }
 .heat__cell.l-1 { background: var(--heat-1); }
 .heat__cell.l-2 { background: var(--heat-2); }
 .heat__cell.l-3 { background: var(--heat-3); }
@@ -325,9 +343,4 @@ body {
   height: 100%; color: var(--fg-faint); font-size: 16px;
 }
 
-.panel--wt.flash, .panel--head.flash { animation: pulse-border 600ms ease-out 1; }
-@keyframes pulse-border {
-  0%   { box-shadow: inset 0 0 0 0 var(--accent); }
-  40%  { box-shadow: inset 0 0 0 3px var(--accent); }
-  100% { box-shadow: inset 0 0 0 0 var(--accent); }
-}
+/* legacy pulse-border keyframes removed — replaced by .panel::after opacity flash above */

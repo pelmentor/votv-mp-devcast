@@ -2,20 +2,13 @@
 // and the HEAD commit diff — same DOM, different state slice via `dataKey`.
 
 import { onUpdate } from '/core/state-client.js';
-
-function escape(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]);
-}
+import { escapeHtml } from '/core/utils.js';
 
 function renderHunk(hunk) {
-  // Walk each line, tracking old/new line numbers off the @@ header.
-  // Header form: @@ -oldStart,oldLen +newStart,newLen @@
-  let oldNo = 0, newNo = 0;
-  const m = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(hunk.header);
-  if (m) { oldNo = Number(m[1]); newNo = Number(m[2]); }
-
+  // Walk each line. Header form: @@ -oldStart,oldLen +newStart,newLen @@
+  // (Line numbers are decorative — kept for parity with GitHub's diff view.)
   const html = [];
-  html.push(`<div class="hunk__header">${escape(hunk.header)}</div>`);
+  html.push(`<div class="hunk__header">${escapeHtml(hunk.header)}</div>`);
   for (const line of hunk.lines) {
     let gutter;
     if (line.type === 'added')        { gutter = '+'; }
@@ -24,15 +17,10 @@ function renderHunk(hunk) {
     else                              { gutter = '\\'; }
 
     if (line.type === 'meta') {
-      html.push(`<div class="hunk__line t-meta"><div class="hunk__text">${escape(line.text)}</div></div>`);
+      html.push(`<div class="hunk__line t-meta"><div class="hunk__text">${escapeHtml(line.text)}</div></div>`);
       continue;
     }
-    html.push(`
-      <div class="hunk__line t-${line.type}">
-        <div class="hunk__gutter">${gutter}</div>
-        <div class="hunk__text">${escape(line.text)}</div>
-      </div>
-    `);
+    html.push(`<div class="hunk__line t-${line.type}"><div class="hunk__gutter">${gutter}</div><div class="hunk__text">${escapeHtml(line.text)}</div></div>`);
   }
   return `<div class="hunk">${html.join('')}</div>`;
 }
@@ -43,7 +31,7 @@ function renderFile(file) {
     <div class="diff-file">
       <header class="diff-file__header">
         <span class="diff-file__status s-${status}" title="${status}">${status}</span>
-        <span class="diff-file__path">${escape(file.path)}</span>
+        <span class="diff-file__path">${escapeHtml(file.path)}</span>
         <span class="diff-file__delta"><span class="a">+${file.linesAdded}</span> <span class="r">−${file.linesRemoved}</span></span>
       </header>
       ${file.hunks.map(renderHunk).join('')}
@@ -54,11 +42,11 @@ function renderFile(file) {
 export function mountDiffView(container, { dataKey, label, emptyMessage }) {
   container.innerHTML = `
     <div class="panel-title">
-      <span>${escape(label)}</span>
+      <span>${escapeHtml(label)}</span>
       <span class="panel-title__meta" data-meta>—</span>
     </div>
     <div class="panel-body" data-body>
-      <div class="diff-empty">${escape(emptyMessage)}</div>
+      <div class="diff-empty">${escapeHtml(emptyMessage)}</div>
     </div>
   `;
   const $body = container.querySelector('[data-body]');
@@ -71,7 +59,11 @@ export function mountDiffView(container, { dataKey, label, emptyMessage }) {
     const slice = state[dataKey];
     if (!slice) return;
 
-    const sig = `${slice.commitSha || ''}|${slice.totalAdded}|${slice.totalRemoved}|${(slice.files || []).map(f => f.path).join(',')}`;
+    // Signature includes per-file deltas so a same-file-list edit that nets to
+    // the same totals still re-renders (e.g. swap 1 line in file A while another
+    // file B's deltas don't change).
+    const filesPart = (slice.files || []).map(f => `${f.path}:${f.linesAdded}:${f.linesRemoved}`).join(',');
+    const sig = `${slice.commitSha || ''}|${slice.totalAdded}|${slice.totalRemoved}|${filesPart}`;
     if (sig === lastSig) return;
     lastSig = sig;
 
@@ -83,7 +75,7 @@ export function mountDiffView(container, { dataKey, label, emptyMessage }) {
     }
 
     if (!slice.files || slice.files.length === 0) {
-      $body.innerHTML = `<div class="diff-empty">${escape(emptyMessage)}</div>`;
+      $body.innerHTML = `<div class="diff-empty">${escapeHtml(emptyMessage)}</div>`;
       $meta.textContent = '—';
       return;
     }
@@ -94,8 +86,9 @@ export function mountDiffView(container, { dataKey, label, emptyMessage }) {
     $body.innerHTML = fragments.join('');
 
     // Flash the panel border so a viewer notices the change.
+    // Animating opacity on a pseudo-element (see theme.css .panel::after) keeps this compositor-only.
     container.classList.remove('flash');
-    void container.offsetWidth; // force reflow so the animation restarts
+    void container.offsetWidth;
     container.classList.add('flash');
   });
 }

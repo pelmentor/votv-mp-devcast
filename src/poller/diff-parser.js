@@ -78,8 +78,9 @@ export function parseDiff(rawText, { maxLines = MAX_DIFF_LINES } = {}) {
 
     if (!curHunk) continue; // skip pre-hunk noise (index lines, mode lines)
 
-    if (truncated) continue;
-
+    // Classify and COUNT first; only THEN decide whether to push the line into
+    // the rendered hunk. This way file/total +/- counters stay honest even when
+    // the line-cap kicks in mid-diff (otherwise the panel header would lie).
     let type;
     let text;
     if (line.startsWith('+') && !line.startsWith('+++')) {

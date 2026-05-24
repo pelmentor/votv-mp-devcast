@@ -51,9 +51,19 @@ export function mountHeatmap(container) {
 
   $days.innerHTML = DAY_LABELS.map(l => `<div>${l}</div>`).join('');
 
+  let lastSig = null;
+
   onUpdate((state) => {
     if (!state || !state.heatmap) return;
     const hm = state.heatmap;
+
+    // Signature: hour bucket + max + cell coordinates. Skips re-renders when the
+    // 168-cell DOM would not visibly change.
+    const cellPart = hm.cells.map(c => `${c.dayOffset}:${c.hour}:${c.count}`).join(',');
+    const sig = `${new Date().getHours()}|${hm.maxCount}|${cellPart}`;
+    if (sig === lastSig) return;
+    lastSig = sig;
+
     $meta.textContent = `max ${hm.maxCount}/hr`;
     $cap.textContent  = `hours 0–23 · ${hm.cells.length} active hour-cells`;
 

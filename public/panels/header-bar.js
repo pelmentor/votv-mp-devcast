@@ -2,25 +2,7 @@
 // Listens to dashboard:update and to a 30s tick for the "ago" text.
 
 import { onUpdate } from '/core/state-client.js';
-import { icon } from '/core/icons.js';
-
-function timeAgo(ts) {
-  if (!ts) return '—';
-  const s = Math.max(0, Math.floor(Date.now() / 1000) - ts);
-  if (s < 60)   return `${s}s ago`;
-  if (s < 3600) return `${Math.floor(s/60)}m ago`;
-  if (s < 86400)return `${Math.floor(s/3600)}h ago`;
-  return `${Math.floor(s/86400)}d ago`;
-}
-
-function phaseClass(family) {
-  if (!family) return '';
-  if (family === '5N') return 'phase-5N';
-  if (family.startsWith('5S')) return 'phase-5S';
-  if (family === 'Gap') return 'phase-Gap';
-  if (family === 'Bug') return 'phase-Bug';
-  return '';
-}
+import { timeAgo, phaseClass } from '/core/utils.js';
 
 export function mountHeader(container) {
   container.innerHTML = `

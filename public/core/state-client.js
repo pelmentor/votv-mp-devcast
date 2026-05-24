@@ -29,12 +29,22 @@ async function fetchInitial() {
 export function connect() {
   fetchInitial();
   const src = new EventSource('/events');
+  let wasErrored = false;
   src.onmessage = (e) => {
     try { publish(JSON.parse(e.data)); }
     catch (err) { console.warn('[devcast] bad SSE payload', err); }
   };
+  // Dedupe the disconnect log so a flaky network doesn't spam the console every retry.
   src.onerror = () => {
-    // EventSource auto-reconnects; no action required. Logged once for debugging.
-    console.warn('[devcast] SSE disconnected, will auto-reconnect');
+    if (!wasErrored) {
+      console.warn('[devcast] SSE disconnected, will auto-reconnect');
+      wasErrored = true;
+    }
+  };
+  src.onopen = () => {
+    if (wasErrored) {
+      console.info('[devcast] SSE reconnected');
+      wasErrored = false;
+    }
   };
 }

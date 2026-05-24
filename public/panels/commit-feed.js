@@ -2,32 +2,12 @@
 // On new commit (SHA at index 0 changes), the new card animates in.
 
 import { onUpdate } from '/core/state-client.js';
-
-function phaseClass(family) {
-  if (!family) return '';
-  if (family === '5N') return 'phase-5N';
-  if (family.startsWith('5S')) return 'phase-5S';
-  if (family === 'Gap') return 'phase-Gap';
-  if (family === 'Bug') return 'phase-Bug';
-  return '';
-}
-
-function timeAgo(ts) {
-  const s = Math.max(0, Math.floor(Date.now() / 1000) - ts);
-  if (s < 60)    return `${s}s`;
-  if (s < 3600)  return `${Math.floor(s/60)}m`;
-  if (s < 86400) return `${Math.floor(s/3600)}h`;
-  return `${Math.floor(s/86400)}d`;
-}
-
-function escape(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]);
-}
+import { timeAgo, phaseClass, escapeHtml } from '/core/utils.js';
 
 function renderCommit(c, isHead) {
   const cls = ['commit', `commit--${c.commitType || 'other'}`];
   if (isHead) cls.push('commit--new');
-  const phase = c.phaseRaw ? `<span class="commit__phase ${phaseClass(c.phaseFamily)}">${escape(c.phaseRaw)}</span>` : '';
+  const phase = c.phaseRaw ? `<span class="commit__phase ${phaseClass(c.phaseFamily)}">${escapeHtml(c.phaseRaw)}</span>` : '';
   let badge = '';
   if (c.commitType === 'audit') {
     if (c.severity === 'CRITICAL') badge = `<span class="commit__badge commit__badge--critical">${c.issueCount ?? '!'} CRIT</span>`;
@@ -43,15 +23,15 @@ function renderCommit(c, isHead) {
       <div class="commit__stripe"></div>
       <div class="commit__body">
         <div class="commit__row1">
-          <span class="commit__type">[${escape(c.tag || c.commitType)}]</span>
-          <span class="commit__sha">#${escape(c.shortSha)}</span>
+          <span class="commit__type">[${escapeHtml(c.tag || c.commitType)}]</span>
+          <span class="commit__sha">#${escapeHtml(c.shortSha)}</span>
           ${phase}
           ${badge}
         </div>
-        <div class="commit__subject">${escape(c.subject || '')}</div>
+        <div class="commit__subject">${escapeHtml(c.subject || '')}</div>
         <div class="commit__meta">
-          <span>${escape(c.author || '')}</span>
-          <span>· ${timeAgo(c.timestamp)} ago</span>
+          <span>${escapeHtml(c.author || '')}</span>
+          <span>· ${timeAgo(c.timestamp, { short: true })} ago</span>
           ${delta}
         </div>
       </div>
@@ -73,11 +53,19 @@ export function mountCommitFeed(container) {
   const $count = container.querySelector('#feed-count');
 
   let lastHeadSha = null;
+  let lastSig = null;
 
   onUpdate((state) => {
     if (!state || !Array.isArray(state.commits) || state.commits.length === 0) return;
     const commits = state.commits;
     const headSha = commits[0].sha;
+
+    // git log is deterministic given the same HEAD SHA and slice size, so
+    // (sha, length) is a sufficient signature to skip re-render on idle ticks.
+    const sig = `${headSha}|${commits.length}`;
+    if (sig === lastSig) return;
+    lastSig = sig;
+
     const isNew = headSha !== lastHeadSha;
     lastHeadSha = headSha;
     $count.textContent = `${commits.length} loaded`;
