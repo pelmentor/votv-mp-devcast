@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>votv-mp-devcast</title>
+<link rel="stylesheet" href="/core/theme.css" />
+<link rel="icon" href="data:," />
+</head>
+<body>
+<div class="dashboard">
+  <header class="panel panel--header" id="panel-header"></header>
+
+  <section class="panel panel--feed"  id="panel-feed"></section>
+
+  <section class="panel panel--wt"    id="panel-wt"></section>
+  <section class="panel panel--head"  id="panel-head"></section>
+
+  <section class="panel panel--tree"  id="panel-tree"></section>
+  <section class="panel panel--heat"  id="panel-heat"></section>
+</div>
+
+<script type="module">
+  import { connect }           from '/core/state-client.js';
+  import { mountHeader }       from '/panels/header-bar.js';
+  import { mountCommitFeed }   from '/panels/commit-feed.js';
+  import { mountDiffView }     from '/panels/diff-view.js';
+  import { mountFileTree }     from '/panels/file-tree.js';
+  import { mountHeatmap }      from '/panels/heatmap.js';
+
+  mountHeader(document.getElementById('panel-header'));
+  mountCommitFeed(document.getElementById('panel-feed'));
+  mountDiffView(document.getElementById('panel-wt'),   { dataKey: 'workingTreeDiff', label: 'Working Tree',   emptyMessage: 'Clean working tree.' });
+  mountDiffView(document.getElementById('panel-head'), { dataKey: 'headDiff',         label: 'HEAD Commit',   emptyMessage: 'No diff.' });
+  mountFileTree(document.getElementById('panel-tree'));
+  mountHeatmap(document.getElementById('panel-heat'));
+
+  connect();
+</script>
+</body>
+</html>
