@@ -2,7 +2,7 @@
 // and the HEAD commit diff — same DOM, different state slice via `dataKey`.
 
 import { onUpdate } from '/core/state-client.js';
-import { escapeHtml } from '/core/utils.js';
+import { escapeHtml, timeAgo } from '/core/utils.js';
 
 function renderHunk(hunk) {
   // Walk each line. Header form: @@ -oldStart,oldLen +newStart,newLen @@
@@ -39,29 +39,51 @@ function renderFile(file) {
   `;
 }
 
-export function mountDiffView(container, { dataKey, label, emptyMessage }) {
+// Build the parenthesized title suffix for the HEAD-diff panel from state.head.
+// Returns empty string when not the HEAD panel or no head info present.
+function buildHeadSuffix(state) {
+  const h = state && state.head;
+  if (!h) return '';
+  const parts = [];
+  if (h.shortSha)     parts.push(`#${h.shortSha}`);
+  if (h.tag)          parts.push(`[${h.tag}]`);
+  if (h.phaseRaw)     parts.push(h.phaseRaw);
+  if (h.lastCommitAt) parts.push(timeAgo(h.lastCommitAt));
+  return parts.length ? `(${parts.join(' · ')})` : '';
+}
+
+export function mountDiffView(container, { dataKey, label, emptyMessage, includeHeadSuffix = false }) {
   container.innerHTML = `
     <div class="panel-title">
-      <span>${escapeHtml(label)}</span>
+      <span>${escapeHtml(label)}<span class="panel-title__suffix" data-suffix></span></span>
       <span class="panel-title__meta" data-meta>—</span>
     </div>
     <div class="panel-body" data-body>
       <div class="diff-empty">${escapeHtml(emptyMessage)}</div>
     </div>
   `;
-  const $body = container.querySelector('[data-body]');
-  const $meta = container.querySelector('[data-meta]');
+  const $body   = container.querySelector('[data-body]');
+  const $meta   = container.querySelector('[data-meta]');
+  const $suffix = container.querySelector('[data-suffix]');
 
-  let lastSig = null;
+  let lastSig   = null;
+  let lastState = null;
+
+  function refreshSuffix() {
+    if (!includeHeadSuffix) return;
+    $suffix.textContent = buildHeadSuffix(lastState);
+  }
 
   onUpdate((state) => {
     if (!state) return;
+    lastState = state;
+    refreshSuffix();
+
     const slice = state[dataKey];
     if (!slice) return;
 
     // Signature includes per-file deltas so a same-file-list edit that nets to
-    // the same totals still re-renders (e.g. swap 1 line in file A while another
-    // file B's deltas don't change).
+    // the same totals still re-renders.
     const filesPart = (slice.files || []).map(f => `${f.path}:${f.linesAdded}:${f.linesRemoved}`).join(',');
     const sig = `${slice.commitSha || ''}|${slice.totalAdded}|${slice.totalRemoved}|${filesPart}`;
     if (sig === lastSig) return;
@@ -95,4 +117,10 @@ export function mountDiffView(container, { dataKey, label, emptyMessage }) {
     void container.offsetWidth;
     container.classList.add('flash');
   });
+
+  // Keep the "Nm ago" portion of the HEAD suffix fresh even between commits.
+  // Cheap: one textContent write every 30s on one element.
+  if (includeHeadSuffix) {
+    setInterval(refreshSuffix, 30000);
+  }
 }

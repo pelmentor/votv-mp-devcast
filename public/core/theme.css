@@ -86,17 +86,16 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Header banner across the top; below it, 5 tall vertical columns side by side
-   that fill whatever viewport OBS gives us. Each column is 1/5 of viewport
-   width, full remaining height. Each panel scrolls internally — the page
-   itself never scrolls, so OBS captures a stable frame. */
+/* 5 tall vertical columns side by side, each filling the full viewport height.
+   No header bar — repo/branch/HEAD metadata is rendered into the relevant panel
+   titles in parentheses. Each panel scrolls internally; the page itself never
+   scrolls, so OBS captures a stable frame. */
 .dashboard {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  grid-template-rows: 80px 1fr;
+  grid-template-rows: 1fr;
   grid-template-areas:
-    "header header header header header"
-    "feed   wt     head   tree   heat";
+    "feed wt head tree heat";
   width: 100vw;
   height: 100vh;
   gap: 0;
@@ -129,37 +128,11 @@ body {
   18%  { opacity: 1; }
   100% { opacity: 0; }
 }
-.panel--header { grid-area: header; }
 .panel--feed   { grid-area: feed;   }
 .panel--wt     { grid-area: wt;     }
 .panel--head   { grid-area: head;   }
 .panel--tree   { grid-area: tree;   }
 .panel--heat   { grid-area: heat;   }
-
-/* ----- Header bar ----- */
-.header {
-  display: flex; align-items: center; gap: 16px; padding: 0 24px;
-  height: 100%; width: 100%;
-}
-.header__logo { font-weight: 700; font-size: var(--fs-h1); letter-spacing: 0.02em; }
-.header__sep  { color: var(--fg-faint); font-size: 22px; padding: 0 8px; }
-.header__branch { font-family: var(--font-mono); font-size: 20px; font-weight: 600; color: var(--fg-muted); }
-.header__sha    { font-family: var(--font-mono); font-size: 20px; color: var(--accent); font-weight: 600; }
-.header__phase  {
-  font-family: var(--font-mono); font-size: 20px; font-weight: 700;
-  padding: 4px 12px; border-radius: var(--r-chip); color: white;
-  background: var(--phase-default);
-}
-.header__phase.phase-5N   { background: var(--phase-5N); }
-.header__phase.phase-5S   { background: var(--phase-5S); }
-.header__phase.phase-Gap  { background: var(--phase-Gap); color: #1f1500; }
-.header__phase.phase-Bug  { background: var(--phase-Bug); }
-.header__type {
-  font-family: var(--font-mono); font-size: var(--fs-badge); font-weight: 700;
-  padding: 4px 10px; border-radius: 999px;
-  background: var(--type-other); color: white;
-}
-.header__ago { margin-left: auto; color: var(--fg-muted); font-size: 18px; font-weight: 500; }
 
 /* ----- Panel chrome ----- */
 .panel-title {
@@ -174,6 +147,16 @@ body {
   color: var(--fg-faint); font-weight: 600; letter-spacing: 0;
   font-family: var(--font-mono); font-size: 14px; text-transform: none;
 }
+/* Subtle parenthesized suffix in the panel title — carries the metadata
+   that used to live in the removed header bar (repo/branch on commits,
+   sha/tag/phase/age on the HEAD diff). Lower visual weight than the title
+   itself; monospace so SHAs and brackets align. */
+.panel-title__suffix {
+  color: var(--fg-muted); font-weight: 600; letter-spacing: 0;
+  font-family: var(--font-mono); font-size: 13px; text-transform: none;
+  margin-left: 8px;
+}
+.panel-title__suffix:empty { display: none; }
 .panel-body {
   flex: 1 1 auto; overflow: auto; min-height: 0;
   scrollbar-width: thin;

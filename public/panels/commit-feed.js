@@ -42,15 +42,16 @@ function renderCommit(c, isHead) {
 export function mountCommitFeed(container) {
   container.innerHTML = `
     <div class="panel-title">
-      <span>Commits</span>
+      <span>Commits<span class="panel-title__suffix" id="feed-suffix"></span></span>
       <span class="panel-title__meta" id="feed-count">—</span>
     </div>
     <div class="panel-body" id="feed-body">
       <div class="loading">waiting for first commit…</div>
     </div>
   `;
-  const $body  = container.querySelector('#feed-body');
-  const $count = container.querySelector('#feed-count');
+  const $body   = container.querySelector('#feed-body');
+  const $count  = container.querySelector('#feed-count');
+  const $suffix = container.querySelector('#feed-suffix');
 
   let lastHeadSha = null;
   let lastSig = null;
@@ -59,6 +60,11 @@ export function mountCommitFeed(container) {
     if (!state || !Array.isArray(state.commits) || state.commits.length === 0) return;
     const commits = state.commits;
     const headSha = commits[0].sha;
+
+    // Suffix shows the repo + branch identity — used to live in the removed
+    // header bar.
+    const branch = (state.head && state.head.branch) || 'main';
+    $suffix.textContent = `(VOTV_MP / ${branch})`;
 
     // git log is deterministic given the same HEAD SHA and slice size, so
     // (sha, length) is a sufficient signature to skip re-render on idle ticks.
