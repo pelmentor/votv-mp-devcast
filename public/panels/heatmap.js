@@ -57,10 +57,11 @@ export function mountHeatmap(container) {
     if (!state || !state.heatmap) return;
     const hm = state.heatmap;
 
-    // Signature: hour bucket + max + cell coordinates. Skips re-renders when the
-    // 168-cell DOM would not visibly change.
+    // Signature: max + cell coordinates. Skips re-renders when the 168-cell DOM
+    // would not visibly change. (Earlier version included `new Date().getHours()`
+    // which forced a full rebuild every hour for no visible change — dropped.)
     const cellPart = hm.cells.map(c => `${c.dayOffset}:${c.hour}:${c.count}`).join(',');
-    const sig = `${new Date().getHours()}|${hm.maxCount}|${cellPart}`;
+    const sig = `${hm.maxCount}|${cellPart}`;
     if (sig === lastSig) return;
     lastSig = sig;
 
