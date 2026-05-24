@@ -3,7 +3,6 @@
 
 import { onUpdate } from '/core/state-client.js';
 import { escapeHtml } from '/core/utils.js';
-import { attachAutoScroll } from '/core/autoscroll.js';
 
 function renderHunk(hunk) {
   // Walk each line. Header form: @@ -oldStart,oldLen +newStart,newLen @@
@@ -53,12 +52,6 @@ export function mountDiffView(container, { dataKey, label, emptyMessage }) {
   const $body = container.querySelector('[data-body]');
   const $meta = container.querySelector('[data-meta]');
 
-  // Smooth infinite up-down auto-scroll on the diff body so a stream viewer can
-  // read top-to-bottom without keyboard interaction. Single rAF loop, self-cancels
-  // if the body detaches; reset on every content change so we restart from the top
-  // when a new commit lands.
-  const scroller = attachAutoScroll($body, { pxPerSec: 32, pauseMs: 1400 });
-
   let lastSig = null;
 
   onUpdate((state) => {
@@ -92,8 +85,9 @@ export function mountDiffView(container, { dataKey, label, emptyMessage }) {
     if (slice.truncated) fragments.push(`<div class="diff-truncated">diff truncated at line cap</div>`);
     $body.innerHTML = fragments.join('');
 
-    // Restart auto-scroll from the top so the viewer sees the new content from the beginning.
-    scroller.reset();
+    // Snap to top so the viewer sees the new content from line 1.
+    // Stays put until the next update lands.
+    $body.scrollTop = 0;
 
     // Flash the panel border so a viewer notices the change.
     // Animating opacity on a pseudo-element (see theme.css .panel::after) keeps this compositor-only.
