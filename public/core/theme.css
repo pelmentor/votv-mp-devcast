@@ -86,21 +86,17 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Single-column vertical stack that fills whatever viewport OBS gives us.
-   Header is fixed-height; the remaining 5 panels share equal flex of leftover
-   space (1fr each). Each panel scrolls internally — the page itself never
-   scrolls, so OBS captures a stable frame. */
+/* Header banner across the top; below it, 5 tall vertical columns side by side
+   that fill whatever viewport OBS gives us. Each column is 1/5 of viewport
+   width, full remaining height. Each panel scrolls internally — the page
+   itself never scrolls, so OBS captures a stable frame. */
 .dashboard {
   display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: 80px repeat(5, 1fr);
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: 80px 1fr;
   grid-template-areas:
-    "header"
-    "feed"
-    "wt"
-    "head"
-    "tree"
-    "heat";
+    "header header header header header"
+    "feed   wt     head   tree   heat";
   width: 100vw;
   height: 100vh;
   gap: 0;
