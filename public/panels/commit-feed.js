@@ -3,6 +3,7 @@
 
 import { onUpdate } from '/core/state-client.js';
 import { timeAgo, phaseClass, escapeHtml } from '/core/utils.js';
+import { attachAutoScroll } from '/core/autoscroll.js';
 
 function renderCommit(c, isHead) {
   const cls = ['commit', `commit--${c.commitType || 'other'}`];
@@ -52,6 +53,12 @@ export function mountCommitFeed(container) {
   const $body  = container.querySelector('#feed-body');
   const $count = container.querySelector('#feed-count');
 
+  // Auto-scroll the feed top->bottom->jump-top so viewers see commits beyond
+  // the visible window. On every new commit, reset() snaps back to the top so
+  // the fresh card is shown immediately, then the cycle resumes.
+  // Slightly slower than the diff panels so commit subjects are readable.
+  const scroller = attachAutoScroll($body, { pxPerSec: 24, pauseMs: 1600, topDwellMs: 1200 });
+
   let lastHeadSha = null;
   let lastSig = null;
 
@@ -70,5 +77,9 @@ export function mountCommitFeed(container) {
     lastHeadSha = headSha;
     $count.textContent = `${commits.length} loaded`;
     $body.innerHTML = commits.map((c, i) => renderCommit(c, isNew && i === 0)).join('');
+
+    // Snap to top so the freshly-arrived commit is visible immediately;
+    // the scroller then cycles down through older commits over time.
+    scroller.reset();
   });
 }
